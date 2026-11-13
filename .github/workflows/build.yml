@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
 jobs:
   macos:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure (universal)
         run: cmake -S . -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
       - name: Build
@@ -36,7 +36,7 @@ jobs:
   linux-dsp:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: cmake -S . -B build -DAUTOCLOWN_BUILD_PLUGIN=OFF -DCMAKE_BUILD_TYPE=Release
       - run: cmake --build build --parallel
       - run: ./build/tests/AutoClownTests
