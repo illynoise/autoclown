@@ -1,0 +1,42 @@
+name: build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (universal)
+        run: cmake -S . -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Unit tests
+        continue-on-error: true
+        run: ./build/tests/Release/AutoClownTests
+      - name: CPU benchmark
+        continue-on-error: true
+        run: ./build/tests/Release/AutoClownBench
+      - name: Package plug-ins (ad-hoc signed)
+        run: |
+          A="build/AutoClown_artefacts/Release"
+          codesign --force --deep --sign - "$A/VST3/Auto Clown.vst3"
+          codesign --force --deep --sign - "$A/AU/Auto Clown.component"
+          mkdir -p out
+          (cd "$A/VST3" && ditto -c -k --keepParent "Auto Clown.vst3" "$GITHUB_WORKSPACE/out/AutoClown-VST3-mac.zip")
+          (cd "$A/AU" && ditto -c -k --keepParent "Auto Clown.component" "$GITHUB_WORKSPACE/out/AutoClown-AU-mac.zip")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AutoClown-mac-plugins
+          path: out/*.zip
+      - name: auval + pluginval (unsigned, local install)
+        continue-on-error: true
+        run: SKIP_SIGN=1 SKIP_NOTARIZE=1 ./scripts/build_sign_notarize.sh
+  linux-dsp:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -DAUTOCLOWN_BUILD_PLUGIN=OFF -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build --parallel
+      - run: ./build/tests/AutoClownTests
